@@ -1,0 +1,56 @@
+version: '3.5'
+services:
+  backend:
+    build:
+      context: ./
+      dockerfile: DevBoxDev.DockerFile
+    environment:
+      TZ: ${TIME_ZONE_CONFIG}
+    ports:
+      - "802:80"
+      - "4432:443"
+      
+    volumes: 
+      - ./php/hmtl:/var/www #needs html folder inside "php" local folder
+      - ./log:/var/log/apache2
+
+
+    restart: always
+  backup: #https://hub.docker.com/r/databack/mysql-backup
+    image: databack/mysql-backup
+    restart: always
+    user: "0" # set user for write permissions
+    environment:
+      DB_DUMP_TARGET: /var/backups
+      DB_USER: root
+      DB_PASS: ${MYSQL_ROOT_PASSWORD}
+      DB_DUMP_CRON: ${MYSQL_DB_DUMP_CRON}
+      DB_SERVER: mysqldb
+      COMPRESSION: gzip
+      DB_NAMES: ${MYSQL_DATABASE_BACKUP_NAMES}
+    env_file: .env
+    volumes:
+      - ./backupmysql:/var/backups
+  mysqldb:
+    build:
+      context: ./
+      dockerfile: MySQL.DockerFile
+    ports:
+      - "3302:3306"
+    depends_on:
+      - backend
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE:  ${MYSQL_DATABASE}
+      MYSQL_PASSWORD:  ${MYSQL_PASSWORD}
+      TZ: ${TIME_ZONE_CONFIG}
+    env_file: .env
+    restart: always
+    command: mysqld --sql_mode=""
+    volumes: 
+      - ./mysql:/var/lib/mysql
+      - ./mysqlconf:/etc/mysql/conf.d
+      - ./log:/var/log/mysql
+
+     
